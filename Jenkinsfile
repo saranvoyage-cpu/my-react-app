@@ -33,7 +33,7 @@ pipeline {
         stage('Deploy to NGINX') {
             steps {
                 sh '''
-                    scp -r build/* username@your-nginx-server:/var/www/react-app/
+                    scp -r build/* test@192.168.1.15:/var/www/react-app/
                 '''
             }
         }
