@@ -1,42 +1,44 @@
-pipeline {
-    agent { label 'local-node1' }
+name: Notify on Sensitive File Change
 
-    environment {
-        NODE_ENV = 'development'
-    }
+on:
+  push:
+    paths:
+      - 'setting2.text'  # Only this file triggers the workflow
 
-    stages {
-        stage('Checkout') {
-            steps {
-                git url: 'https://github.com/saranvoyage-cpu/my-react-app.git', branch: 'main'
-            }
-        }
+jobs:
+  notify:
+    runs-on: ubuntu-latest
 
-        stage('Install Dependencies') {
-            steps {
-                sh 'npm install'
-            }
-        }
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-        stage('Build') {
-            steps {
-                sh 'npm run build'
-            }
-        }
+      - name: Install msmtp (Simple SMTP client)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y msmtp
 
-        stage('Test (optional)') {
-            steps {
-                sh 'npm test || true'
-            }
-        }
+      - name: Configure and Send Email Notification
+        env:
+          SMTP_SERVER: smtp.gmail.com
+          SMTP_PORT: 587
+          SMTP_USERNAME: saranraj19don@gmail.com
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          TO_EMAIL: saranraj19don@gmail.com
+        run: |
+          echo "defaults
+          auth on
+          tls on
+          tls_trust_file /etc/ssl/certs/ca-certificates.crt
+          logfile ~/.msmtp.log
 
-        stage('Deploy to NGINX') {
-            steps {
-                sh '''
-                    scp -r build/* test@192.168.1.15:/var/www/react-app/
-                '''
-            }
-        }
-    }
-}
+          account default
+          host $SMTP_SERVER
+          port $SMTP_PORT
+          from $SMTP_USERNAME
+          user $SMTP_USERNAME
+          password $SMTP_PASSWORD" > ~/.msmtprc
 
+          chmod 600 ~/.msmtprc
+
+          echo -e "Subject: 🚨 Sensitive File Changed Alert\n\nThe file 'setting2.text' was modified in the repository.\n\n📌 Repository: $GITHUB_REPOSITORY\n🔀 Commit: $GITHUB_SHA\n👤 Changed by: $GITHUB_ACTOR" | msmtp $TO_EMAIL
